@@ -4,7 +4,7 @@ from generate import generate_customers, generate_products, generate_orders_and_
 def test_customers_have_required_fields():
     customers = generate_customers(10)
     assert len(customers) == 10
-    assert set(customers[0].keys()) == {"customer_id","address" ,"name", "email", "signup_date", "country"}
+    assert set(customers[0].keys()) == {"customer_id","name", "email", "signup_date", "country"}
 
 
 def test_orders_reference_valid_customers():

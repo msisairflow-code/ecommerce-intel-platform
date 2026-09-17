@@ -23,3 +23,9 @@ jobs:
 
       - name: Lint Python files
         run: flake8 . --count --exit-zero --max-line-length=100
+
+      - name: Install project dependencies
+        run: pip install -r data_generator/requirements.txt pytest
+
+      - name: Run tests
+        run: cd data_generator && python -m pytest
