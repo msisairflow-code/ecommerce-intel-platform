@@ -5,6 +5,7 @@ import os
 import pandas as pd
 import json
 import time
+from kafka import KafkaProducer
 
 faker = Faker()
 Faker.seed(42)   
@@ -99,6 +100,15 @@ def export_batch(customers, products, orders, order_items, reviews, out_dir="dat
     pd.DataFrame(reviews).to_csv(f"{out_dir}/reviews.csv", index=False)
     print(f"Batch data written to {out_dir}/")
 
+##generate streaming events and write to JSONL file or Kafka topic
+def get_kafka_producer():
+    producer = KafkaProducer(
+        bootstrap_servers='localhost:9092',
+        value_serializer=lambda v: json.dumps(v).encode('utf-8')
+    )
+    return producer
+
+
 
 ##streaming data
 def generate_event(products,cutomers):
@@ -110,6 +120,18 @@ def generate_event(products,cutomers):
         "product_id":random.choice(products)["product_id"],
         "event_type":event_type
     }
+def stream_to_kafka(products, customers,topic="ecommerce-events",delay=1.0):
+    producer=get_kafka_producer()
+    print(f"Streaming events to Kafka topic '{topic}' (Ctrl+C to stop)...")
+    try:
+        while True:
+            event=generate_event(products,customers)
+            producer.send(topic,event)
+            print(event)
+            time.sleep(delay)
+    except KeyboardInterrupt:
+        print("Stopping streaming...")
+        producer.close()
 
 def stream_events(products, customers,out_path="data/stream/events.jsonl",delay=1.0):
     os.makedirs(os.path.dirname(out_path),exist_ok=True)
@@ -128,7 +150,7 @@ def stream_events(products, customers,out_path="data/stream/events.jsonl",delay=
 import argparse
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="E-commerce fake data generator")
-    parser.add_argument("--mode", choices=["batch", "stream"], required=True)
+    parser.add_argument("--mode", choices=["batch", "stream","stream_to_kafka"], required=True)
     parser.add_argument("--delay", type=float, default=1.0, help="Seconds between stream events")
     args = parser.parse_args()
 
@@ -141,4 +163,7 @@ if __name__ == "__main__":
         export_batch(customers,products,orders,order_items,reviews)
 
     else:
-        stream_events(products, customers, delay=args.delay)
+        if args.mode == "stream":
+            stream_events(products, customers, delay=args.delay)
+        elif args.mode == "stream_to_kafka":
+            stream_to_kafka(products, customers, delay=args.delay)
